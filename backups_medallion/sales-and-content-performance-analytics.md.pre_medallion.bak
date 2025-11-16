@@ -1,0 +1,265 @@
+# Sales & Content Performance Analytics
+
+Brief: Analytics combining sales performance with content and marketing effectiveness.
+
+- Objectives:
+  - Measure how content drives conversions and sales.
+- Scope:
+  - Campaign attribution, content A/B testing, conversion funnels.
+- Key Components:
+  - Attribution pipelines, experiment analytics, dashboards.
+- Technologies:
+  - Event processing, Databricks, attribution libraries.
+- Deliverables:
+  - Attribution reports, conversion dashboards, experiment results.
+
+## Expanded Source Schemas, ER Diagrams, Facts & Dimensions
+
+Five standardized sources for sales and content analytics, each with 20 tables, ER diagrams, fact/dimension details, reconciliation notes, and a rights statement. Project prefix: `scpa_`.
+
+### Source A: Content Interactions (scpa_content)
+
+Tables (20):
+1. scpa_stg_content_events
+2. scpa_raw_content
+3. scpa_dim_content
+4. scpa_dim_channel
+5. scpa_dim_campaign
+6. scpa_ref_event_map
+7. scpa_fact_content_events
+8. scpa_stage_personalization
+9. scpa_dim_time
+10. scpa_dim_user
+11. scpa_audit_ingest
+12. scpa_ref_content_taxonomy
+13. scpa_stage_dedup
+14. scpa_fact_engagement_scores
+15. scpa_dim_region
+16. scpa_ref_sentiment
+17. scpa_audit_recon
+18. scpa_stage_enrich
+19. scpa_ref_metrics
+20. scpa_dim_status
+
+ER Diagram (ASCII):
+
+scpa_fact_content_events (event_id, content_id, user_id, channel_id, ts)
+  |-- content_id --> scpa_dim_content(content_id)
+  |-- user_id --> scpa_dim_user(user_id)
+
+Rights Statement: These diagrams are original designs created for analytics implementation and documentation.
+
+---
+
+### Source B: Sales Transactions (scpa_sales)
+
+Tables (20):
+1. scpa_stg_sales
+2. scpa_raw_sales
+3. scpa_dim_order
+4. scpa_dim_customer
+5. scpa_dim_product
+6. scpa_ref_txn_type
+7. scpa_fact_order_lines
+8. scpa_stage_returns
+9. scpa_dim_channel
+10. scpa_dim_time
+11. scpa_audit_sales_ingest
+12. scpa_ref_pricing
+13. scpa_stage_promotions
+14. scpa_fact_revenue_by_content
+15. scpa_dim_region
+16. scpa_ref_discounts
+17. scpa_audit_recon
+18. scpa_stage_settlements
+19. scpa_ref_tax_codes
+20. scpa_dim_status
+
+---
+
+### Source C: Campaigns & Ads (scpa_campaign)
+
+Tables (20):
+1. scpa_stg_campaign_events
+2. scpa_raw_campaigns
+3. scpa_dim_campaign
+4. scpa_dim_channel
+5. scpa_dim_audience
+6. scpa_ref_costs
+7. scpa_fact_campaign_performance
+8. scpa_stage_attribution
+9. scpa_dim_time
+10. scpa_dim_region
+11. scpa_audit_campaign_ingest
+12. scpa_ref_attribution_rules
+13. scpa_stage_experiments
+14. scpa_fact_experiment_results
+15. scpa_dim_team
+16. scpa_ref_cost_models
+17. scpa_audit_recon
+18. scpa_stage_creatives
+19. scpa_ref_metrics
+20. scpa_dim_status
+
+---
+
+### Source D: Recommendations & Personalization (scpa_personalization)
+
+Tables (20):
+1. scpa_stg_recs
+2. scpa_raw_recs
+3. scpa_dim_model_version
+4. scpa_dim_feature
+5. scpa_dim_user
+6. scpa_ref_feature_defs
+7. scpa_fact_recommendation_events
+8. scpa_stage_feature_store
+9. scpa_dim_time
+10. scpa_dim_channel
+11. scpa_audit_model_runs
+12. scpa_ref_hyperparams
+13. scpa_stage_feedback
+14. scpa_fact_model_performance
+15. scpa_dim_segment
+16. scpa_ref_decisioning_rules
+17. scpa_audit_recon
+18. scpa_stage_experiments
+19. scpa_ref_metrics
+20. scpa_dim_status
+
+---
+
+### Source E: Reporting & Dashboards (scpa_reporting)
+
+Tables (20):
+1. scpa_stg_reports
+2. scpa_raw_reports
+3. scpa_dim_report
+4. scpa_dim_consumer
+5. scpa_dim_time
+6. scpa_ref_templates
+7. scpa_fact_report_views
+8. scpa_stage_exports
+9. scpa_dim_region
+10. scpa_dim_business_unit
+11. scpa_audit_report_runs
+12. scpa_ref_signoffs
+13. scpa_stage_cache
+14. scpa_fact_kpi_snapshots
+15. scpa_dim_status
+16. scpa_ref_formats
+17. scpa_audit_cache_invalidations
+18. scpa_stage_distribution
+19. scpa_ref_access_controls
+20. scpa_dim_tags
+
+Common patterns: Ensure join keys across content and sales are stable and use `audit_*` tables to reconcile content-driven revenue attribution.
+
+## Detailed ER Diagram
+
+# Detailed ER Diagram: Entities, Attributes, Relationships, Cardinalities
+
+This detailed ER diagram template expands the ASCII ER stub into full entity descriptions, attribute lists, primary/foreign key definitions, and explicit relationships with cardinalities for the project prefix `sales_and_content_performance_analytics` (source file `sales-and-content-performance-analytics.md`).
+
+The template covers a canonical canonical set of logical entities used across projects: Source/Stage/Raw, Dimension entities, Fact entities, Reference / Lookup tables, and Audit & Reconciliation tables.
+
+---
+
+**Entity: `sales_and_content_performance_analytics_raw_records`**
+- Purpose: Immutable raw ingest payload store (one row per source record).
+- PK: `record_key`
+- Key attributes: `record_key (PK)`, `source_system`, `raw_payload` (JSON), `ingest_ts`, `ingest_batch_id`, `payload_hash`.
+
+**Entity: `sales_and_content_performance_analytics_stg_<topic>`** (generic staging)
+- Purpose: Parsed staging of a raw record specific to a topic (e.g. transactions, events).
+- PK: `stg_id`
+- Key attributes: `stg_id (PK)`, `record_key (FK -> sales_and_content_performance_analytics_raw_records.record_key)`, `parsed_fields...`, `ingest_ts`, `batch_id`, `load_status`.
+
+**Entity: `sales_and_content_performance_analytics_dim_account`**
+- Purpose: Account dimension used by transaction facts.
+- PK: `account_id`
+- Attributes: `account_id (PK)`, `customer_id`, `account_type`, `currency_code`, `open_date`, `close_date`, `status`, `valid_from`, `valid_to`.
+
+**Entity: `sales_and_content_performance_analytics_dim_customer`**
+- Purpose: Customer master attributes and identity.
+- PK: `customer_id`
+- Attributes: `customer_id (PK)`, `first_name`, `last_name`, `email_hash`, `birth_date`, `kyc_level`, `country`, `risk_score`, `valid_from`, `valid_to`.
+
+**Entity: `sales_and_content_performance_analytics_dim_time`**
+- Purpose: Standard time dimension for reporting.
+- PK: `date_key`
+- Attributes: `date_key (PK)`, `date`, `year`, `quarter`, `month`, `day`, `weekday`, `is_business_day`.
+
+**Entity: `sales_and_content_performance_analytics_dim_product`**
+- Purpose: Product/SKU master for retail-like facts.
+- PK: `product_id`
+- Attributes: `product_id (PK)`, `sku`, `name`, `category`, `brand`, `size`, `color`, `status`, `valid_from`, `valid_to`.
+
+**Entity: `sales_and_content_performance_analytics_fact_transactions`**
+- Purpose: Canonical transaction-level fact (grain: one event/transaction).
+- PK: `transaction_id`
+- Attributes: `transaction_id (PK)`, `source_event_id`, `account_id (FK)`, `customer_id (FK)`, `product_id (FK)`, `amount`, `currency_code`, `amount_usd`, `txn_type`, `channel_code`, `merchant_id`, `status`, `posted_ts`, `processed_ts`, `ingest_batch_id`, `checksum`.
+
+---
+
+Relationships and cardinalities (explicit):
+- `sales_and_content_performance_analytics_fact_transactions.account_id` (M:1) -> `sales_and_content_performance_analytics_dim_account.account_id`
+  - Cardinality: Many transactions map to one account.
+- `sales_and_content_performance_analytics_fact_transactions.customer_id` (M:1) -> `sales_and_content_performance_analytics_dim_customer.customer_id`
+  - Many transactions per customer; some transactions inferred to customer through account linkage.
+- `sales_and_content_performance_analytics_fact_transactions.product_id` (M:1) -> `sales_and_content_performance_analytics_dim_product.product_id`
+  - Many fact rows reference a single product row.
+- `sales_and_content_performance_analytics_fact_transactions.posted_ts` (M:1) -> `sales_and_content_performance_analytics_dim_time.date_key` (via date_key derived from posted_ts)
+  - Many transactions map to one date in the time dimension.
+- `sales_and_content_performance_analytics_stg_<topic>.record_key` (M:1) -> `sales_and_content_performance_analytics_raw_records.record_key`
+  - One staging row per raw record, after parsing.
+
+Association tables / many-to-many patterns:
+- If customers belong to segments or tags, model as `sales_and_content_performance_analytics_rel_customer_segment(customer_id FK, segment_id FK, assigned_ts)` with PK composite (`customer_id`, `segment_id`).
+
+Detailed ER rules & integrity constraints:
+- Use FK constraints where possible in the curated warehouse (e.g., `FOREIGN KEY (account_id) REFERENCES sales_and_content_performance_analytics_dim_account(account_id)`).
+- Enforce uniqueness on natural keys (e.g., `transaction_id`, `account_id + source_event_id` as alternate key) and use checksums for content verification.
+- Implement SCD2 pattern for dimensions needing history using `valid_from` and `valid_to` and a surrogate `dim_pk`.
+
+Sample SQL DDL snippets (representative):
+
+CREATE TABLE sales_and_content_performance_analytics_dim_customer (
+  customer_id STRING PRIMARY KEY,
+  first_name STRING,
+  last_name STRING,
+  email_hash STRING,
+  kyc_level STRING,
+  risk_score DOUBLE,
+  valid_from DATE,
+  valid_to DATE
+);
+
+CREATE TABLE sales_and_content_performance_analytics_fact_transactions (
+  transaction_id STRING PRIMARY KEY,
+  source_event_id STRING,
+  account_id STRING,
+  customer_id STRING,
+  product_id STRING,
+  amount DECIMAL(18,2),
+  currency_code STRING,
+  posted_ts TIMESTAMP,
+  ingest_batch_id STRING,
+  checksum STRING,
+  FOREIGN KEY (account_id) REFERENCES sales_and_content_performance_analytics_dim_account(account_id),
+  FOREIGN KEY (customer_id) REFERENCES sales_and_content_performance_analytics_dim_customer(customer_id)
+);
+
+ER Diagram (visual guidance):
+- Center the `sales_and_content_performance_analytics_fact_transactions` as the hub with outward links to `dim_account`, `dim_customer`, `dim_product`, and `dim_time`.
+- Secondary facts (e.g., `sales_and_content_performance_analytics_fact_settlements`) link back to `fact_transactions` via `transaction_id` where the settlement is child of a transaction (1:M relationship).
+
+---
+
+Per-project extension guidance:
+- For banking projects, expand `dim_account` and `dim_customer` with regulatory attributes (aml_flags, kyc_date, tax_id_hash).
+- For retail projects, extend `dim_product` with merchandising attributes and `dim_store` to represent brick-and-mortar locations.
+- For IoT/telemetry projects, add time-series entity `sales_and_content_performance_analytics_ts_measurements(device_id, measure_ts, metric, value)` with retention and rollup rules described.
+
+This template is intended to be expanded with project-specific entities. The automation script will replace `sales_and_content_performance_analytics` and `sales-and-content-performance-analytics.md` and append the section to each markdown file that does not already contain a `## Detailed ER Diagram` marker.
+

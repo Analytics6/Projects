@@ -1,0 +1,449 @@
+# Banking Transaction Processing Pipeline
+
+Brief: Reliable, auditable pipelines for banking transaction data processing.
+
+- Objectives:
+  - Ensure integrity, auditability, and timeliness of transaction data.
+- Scope:
+  - Ingestion, enrichment, settlement, reconciliation.
+- Key Components:
+  - Message queues, ETL, reconciliation jobs, audit logs.
+- Technologies:
+  - Kafka, Databricks, secure storage, monitoring.
+- Deliverables:
+  - Processed transaction tables, reconciliation reports.
+
+## Expanded Source Schemas, ER Diagrams, Facts & Dimensions
+
+This document expands the pipeline design into five distinct logical sources. Each source lists 20 tables (staging, raw, reference, dimension, fact, audit), an ER-style diagram showing relationships between the principal tables, a description of fact tables and dimensions, and an explicit rights statement about creating flow/ER diagrams.
+
+NOTE: The diagrams and schemas below are illustrative design artifacts created to model the pipeline flow and canonical schemas for analytics. I confirm that I have the right to create and publish these flow diagrams and documentation as part of this engagement — they are original schematic designs and do not reproduce proprietary diagrams from third parties.
+
+---
+
+### Source A: Core Banking Transactions (Source: CoreBankingSystem)
+
+Overview: Transactions originating from the bank's core ledger and account systems (debits, credits, transfers, fees).
+
+Tables (20):
+1. cb_stg_transactions — raw ingest from CoreBanking (raw payload, ingest_ts)
+2. cb_raw_transactions — normalized raw records (one row per bank event)
+3. cb_dim_account — account master (account_id, account_type, opened_date)
+4. cb_dim_customer — customer master (customer_id, name, dob, kyc_flag)
+5. cb_dim_branch — branch master (branch_id, name, region)
+6. cb_dim_currency — currency lookup (currency_code, name)
+7. cb_dim_txn_type — transaction type lookup (type_code, description)
+8. cb_dim_channel — channel lookup (channel_code, description)
+9. cb_fact_transactions — canonical transaction fact (transaction_id, account_id, amount...)
+10. cb_fact_balances_snapshot — daily balance snapshots
+11. cb_stage_enrichments — enrichment staging (fx rates, customer score)
+12. cb_dim_merchant — merchant lookup (merchant_id, category)
+13. cb_dim_fee_type — fee type lookup
+14. cb_audit_ingest — ingest audit log (batch_id, rows_in, rows_out)
+15. cb_audit_recon — reconciliation audit (source_rows, target_rows, mismatches)
+16. cb_dim_settlement — settlement instructions lookup
+17. cb_stage_reconciled — reconciled staging table
+18. cb_dim_status — transaction status (posted, pending, failed)
+19. cb_dim_card — card metadata (card_id, card_scheme)
+20. cb_ref_exchange_rates — historical FX rates
+
+ER Diagram (ASCII):
+
+cb_fact_transactions (transaction_id, account_id, amount, currency_code, txn_type_code, channel_code, merchant_id, posted_ts)
+  |-- account_id --> cb_dim_account (account_id)
+  |-- customer_id --> cb_dim_customer (customer_id) (via account)
+  |-- branch_id --> cb_dim_branch (branch_id)
+  |-- currency_code --> cb_dim_currency (currency_code)
+  |-- txn_type_code --> cb_dim_txn_type (type_code)
+  |-- channel_code --> cb_dim_channel (channel_code)
+  |-- merchant_id --> cb_dim_merchant (merchant_id)
+  |-- card_id --> cb_dim_card (card_id)
+
+Description: The central fact table `cb_fact_transactions` links to multiple dimensions to support analytics: customer/account analysis, channel analysis, merchant/product analytics, and FX normalization.
+
+Fact Tables & Dimensions (detailed):
+- Fact: `cb_fact_transactions` — grain is one financial event (transaction). Key columns: `transaction_id PK`, `account_id FK`, `amount`, `currency_code FK`, `amount_usd` (derived), `txn_type_code FK`, `channel_code FK`, `merchant_id FK`, `posted_ts`, `processed_ts`, `source_batch_id`.
+- Dimension: `cb_dim_account` — account-level attributes used for segmentation: `account_id PK`, `customer_id FK`, `account_type`, `status`, `open_date`, `close_date`.
+- Dimension: `cb_dim_customer` — personal attributes and risk flags: `customer_id PK`, `name`, `email_hash`, `kyc_level`, `risk_score`.
+- Dimension: `cb_dim_currency` — normalization info and minor currency metadata.
+- Dimension: `cb_dim_txn_type` — used to classify transactions for reporting.
+- Dimension: `cb_dim_channel` — defines origin of transaction (ATM, branch, online, mobile, API).
+
+ER Diagram Explanation (detailed):
+- `cb_stg_transactions` → ETL cleans to `cb_raw_transactions`.
+- Enrichment joins `cb_raw_transactions` with `cb_stage_enrichments` and `cb_ref_exchange_rates` to compute normalized amounts and flags.
+- Consolidated rows inserted into `cb_fact_transactions` with FK references to dimensions.
+- Audit tables (`cb_audit_ingest`, `cb_audit_recon`) record counts for reconciliation and SLA verification.
+
+Operational Flow Diagram Rights & Notes:
+- I assert rights to author these flow diagrams and schemas as original work for pipeline design and documentation. Use restrictions: these are design artifacts intended for internal architecture and implementation; if you require formal IP transfer or NDA-based ownership statements, provide the required legal agreement.
+
+---
+
+### Source B: Payments Gateway (Source: PaymentsGateway)
+
+Overview: Payment authorizations and settlements from the external payments gateway (card authorizations, refunds).
+
+Tables (20):
+1. pg_stg_authorizations
+2. pg_raw_authorizations
+3. pg_dim_merchant
+4. pg_dim_terminal
+5. pg_dim_card
+6. pg_dim_currency
+7. pg_dim_response_code
+8. pg_dim_acquirer
+9. pg_fact_authorizations
+10. pg_fact_settlements
+11. pg_audit_ingest
+12. pg_audit_settlement_recon
+13. pg_ref_fee_schedule
+14. pg_stage_chargebacks
+15. pg_dim_scheme (Visa/Mastercard/etc)
+16. pg_dim_processor (processor metadata)
+17. pg_stage_retries
+18. pg_dim_geo (country/region)
+19. pg_ref_rate_limiting
+20. pg_dim_risk_score
+
+ER Diagram (ASCII):
+
+pg_fact_authorizations (auth_id, card_id, merchant_id, terminal_id, amount, currency_code, auth_ts, response_code)
+  |-- card_id --> pg_dim_card
+  |-- merchant_id --> pg_dim_merchant
+  |-- terminal_id --> pg_dim_terminal
+  |-- response_code --> pg_dim_response_code
+  |-- currency_code --> pg_dim_currency
+
+pg_fact_settlements (settlement_id, auth_id FK, settled_amount, settlement_date, acquirer_id FK)
+  |-- auth_id --> pg_fact_authorizations
+  |-- acquirer_id --> pg_dim_acquirer
+
+Description: Authorizations and settlement facts enable measurement of authorization rate, settlement latency, chargebacks, and reconciliation with issuer/acquirer statements.
+
+Facts & Dimensions:
+- `pg_fact_authorizations` — grain: one authorization attempt. Columns include `auth_id PK`, `card_id FK`, `merchant_id FK`, `amount`, `currency_code`, `response_code`, `auth_ts`, `auth_status`.
+- `pg_fact_settlements` — grain: settlement event (can be many-to-one with auths). Columns: `settlement_id PK`, `auth_id FK`, `settled_amount`, `settlement_ts`, `acquirer_id FK`.
+- Dimensions: `pg_dim_merchant`, `pg_dim_terminal`, `pg_dim_card`, `pg_dim_response_code`, `pg_dim_acquirer`, `pg_dim_geo`.
+
+ER Diagram Explanation:
+- Gateway events ingest into staging tables (`pg_stg_authorizations`) and normalize into `pg_raw_authorizations`.
+- Authorizations are deduplicated and persisted to `pg_fact_authorizations`.
+- Settlement feeds reconcile authorizations to settled amounts producing `pg_fact_settlements`.
+- Audits capture mismatches between `pg_fact_settlements` and bank reimbursements.
+
+Rights Statement: This ER diagram and flow are original design representations for payments pipeline implementation and I confirm the right to create and provide them for implementation documentation.
+
+---
+
+### Source C: ATM & POS Switch (Source: SwitchRouter)
+
+Overview: Switch events for ATMs and POS devices (cash withdrawals, balance inquiries, reversals).
+
+Tables (20):
+1. sw_stg_events
+2. sw_raw_events
+3. sw_dim_device
+4. sw_dim_terminal
+5. sw_dim_network
+6. sw_dim_branch
+7. sw_dim_card
+8. sw_dim_txn_type
+9. sw_fact_switch_events
+10. sw_fact_cash_movements
+11. sw_audit_ingest
+12. sw_ref_fees
+13. sw_dim_status
+14. sw_stage_reversals
+15. sw_dim_provider
+16. sw_ref_limits
+17. sw_stage_settlement_batches
+18. sw_fact_reversals
+19. sw_dim_geo
+20. sw_audit_recon
+
+ER Diagram (ASCII):
+
+sw_fact_switch_events (event_id, terminal_id, card_id, txn_type, amount, status, event_ts)
+  |-- terminal_id --> sw_dim_terminal
+  |-- card_id --> sw_dim_card
+  |-- txn_type --> sw_dim_txn_type
+  |-- terminal_id --> sw_dim_device
+
+sw_fact_cash_movements (movement_id, event_id FK, amount, branch_id)
+  |-- event_id --> sw_fact_switch_events
+  |-- branch_id --> sw_dim_branch
+
+Description: Switch events feed both authorization flows and cash movement accounting. Reconciliations occur between switch and core ledger.
+
+Facts & Dimensions:
+- `sw_fact_switch_events`: event-level grain. Key columns: `event_id`, `terminal_id FK`, `card_id FK`, `txn_type`, `amount`, `status`, `provider_id`, `event_ts`.
+- `sw_fact_cash_movements`: aggregated cash movements used for ATM cash forecasting.
+- Dimensions include `sw_dim_device`, `sw_dim_terminal`, `sw_dim_provider`, `sw_dim_branch`.
+
+Explanation: Event stream -> staging -> raw -> dedup -> canonical fact; settlement batches later produce settlement facts used for recon.
+
+---
+
+### Source D: Card Processor / Acquirer (Source: CardProcessor)
+
+Overview: Card network and acquirer feeds (issuer responses, clearing files, chargebacks).
+
+Tables (20):
+1. cp_stg_clearing_files
+2. cp_raw_clearing
+3. cp_dim_issuer
+4. cp_dim_acquirer
+5. cp_dim_scheme
+6. cp_dim_merchant
+7. cp_dim_fee_type
+8. cp_fact_clearing_entries
+9. cp_fact_chargebacks
+10. cp_ref_fee_schedule
+11. cp_stage_adjustments
+12. cp_audit_clearing
+13. cp_dim_currency
+14. cp_dim_route
+15. cp_fact_fees
+16. cp_stage_reconciled
+17. cp_dim_dispute_reason
+18. cp_ref_fx_rates
+19. cp_dim_settlement_status
+20. cp_audit_recon
+
+ER Diagram (ASCII):
+
+cp_fact_clearing_entries (clearing_id, acquirer_id, issuer_id, merchant_id, amount, fee_amount, currency)
+  |-- acquirer_id --> cp_dim_acquirer
+  |-- issuer_id --> cp_dim_issuer
+  |-- merchant_id --> cp_dim_merchant
+  |-- currency --> cp_dim_currency
+
+cp_fact_chargebacks (chargeback_id, clearing_id FK, dispute_reason, amount, status, cb_ts)
+  |-- clearing_id --> cp_fact_clearing_entries
+  |-- dispute_reason --> cp_dim_dispute_reason
+
+Description: Clearing entries and chargebacks provide the settlement and dispute trail required for finance posting and reconciliation.
+
+Facts & Dimensions:
+- `cp_fact_clearing_entries`: grain is clearing line. Useful metrics: gross volume, net fees, cost per transaction, reconciliation status.
+- `cp_fact_chargebacks`: captures disputes and chargeback flows for aging and liability.
+- Dimensions: `cp_dim_issuer`, `cp_dim_acquirer`, `cp_dim_merchant`, `cp_dim_scheme`, `cp_dim_dispute_reason`.
+
+Rights Statement: I confirm these diagrams and schemas are generated by me for design purposes and may be used for implementation documentation and flow diagrams.
+
+---
+
+### Source E: External Settlements & Clearing (Source: ExternalSettlements)
+
+Overview: Files from external settlement systems and clearing houses (ACH, RTGS, correspondent banks).
+
+Tables (20):
+1. es_stg_settlement_files
+2. es_raw_settlements
+3. es_dim_counterparty
+4. es_dim_settlement_method
+5. es_dim_currency
+6. es_fact_settlement_instructions
+7. es_fact_settlement_postings
+8. es_ref_cutoff_times
+9. es_stage_fees
+10. es_audit_ingest
+11. es_audit_settlement_recon
+12. es_dim_message_type
+13. es_ref_exchange_rates
+14. es_fact_netting_results
+15. es_stage_returns
+16. es_dim_bank_branch_lookup
+17. es_dim_account_mapping
+18. es_ref_statement_lines
+19. es_fact_clearing_adjustments
+20. es_audit_aging
+
+ER Diagram (ASCII):
+
+es_fact_settlement_instructions (instruction_id, counterparty_id, amount, currency, value_date, method)
+  |-- counterparty_id --> es_dim_counterparty
+  |-- method --> es_dim_settlement_method
+  |-- currency --> es_dim_currency
+
+es_fact_settlement_postings (posting_id, instruction_id FK, posting_amount, posting_ts, status)
+  |-- instruction_id --> es_fact_settlement_instructions
+
+Description: Settlement instructions and postings capture the lifecycle from instruction generation, netting, posting, to reconciliation with bank accounts.
+
+Facts & Dimensions:
+- `es_fact_settlement_instructions`: grain is one instruction to move funds. Columns: `instruction_id PK`, `counterparty_id FK`, `amount`, `currency`, `value_date`, `method`, `netting_group`.
+- `es_fact_settlement_postings`: captures actual ledger postings created by settlement.
+- Dimensions: `es_dim_counterparty`, `es_dim_settlement_method`, `es_dim_message_type`, `es_dim_bank_branch_lookup`.
+
+ER Diagram Explanation: Ingestion of settlement files → normalization → enrichment (cutoff, FX) → create instructions → netting/aggregation → produce postings → reconciliation with ledger facts and cash positions.
+
+---
+
+## Common Fact Table Patterns (applies across sources)
+
+- Transaction Fact (canonical): Grain is one event. Core columns: `event_id PK`, `source` (SourceSystem), `source_event_id`, `account_id FK`, `customer_id FK`, `amount`, `currency`, `amount_usd`, `txn_type`, `status`, `event_ts`, `processed_ts`, `ingest_batch_id`.
+- Balance Snapshot Fact: Daily snapshots per account or per ledger partition: `account_id`, `snapshot_date`, `closing_balance`, `available_balance`.
+- Settlement Fact: Settlement-level grain capturing cleared/settled amounts and counterparties.
+
+## Common Dimension Patterns
+
+- Account Dimension: `account_id PK`, `customer_id FK`, `acct_type`, `open_date`, `status`, `product_code`, `branch_id`.
+- Customer Dimension: `customer_id PK`, `hashed_identifier`, `kyc_level`, `risk_score`, `first_active_date`, `last_active_date`.
+- Time Dimension: standard `date_key`, `date`, `year`, `quarter`, `month`, `day_of_week`, `is_business_day`.
+- Channel Dimension: `channel_code`, `channel_name`.
+- Merchant Dimension: `merchant_id`, `name`, `category`, `mcc_code`.
+
+## Example Fact Table Schema (detailed)
+- Table: `cb_fact_transactions`
+  - `transaction_id` (string) — PK
+  - `source_system` (string)
+  - `source_event_id` (string)
+  - `account_id` (string) — FK to account dim
+  - `customer_id` (string) — FK to customer dim
+  - `amount` (decimal)
+  - `currency_code` (string) — FK
+  - `amount_usd` (decimal) — derived via `ref_exchange_rates`
+  - `txn_type_code` (string) — FK
+  - `channel_code` (string) — FK
+  - `merchant_id` (string) — FK
+  - `status` (string)
+  - `posted_ts` (timestamp)
+  - `processed_ts` (timestamp)
+  - `ingest_batch_id` (string)
+
+## Example Dimension Table Schema (detailed)
+- Table: `cb_dim_account`
+  - `account_id` (string) — PK
+  - `customer_id` (string)
+  - `account_type` (string)
+  - `open_date` (date)
+  - `close_date` (date)
+  - `status` (string)
+  - `currency_code` (string)
+
+## Reconciliation & Audit Patterns
+- Ingest audit tables record counts and checksums per batch.
+- Reconciliation jobs compare source counts and sums to target fact aggregates; mismatches written to `*_audit_recon` tables and displayed on monitoring dashboards.
+- Late-arriving and reversal handling: stage, tag with `is_reversal` and update facts with versioning fields (`valid_from`, `valid_to`) or CDC-style soft-deletes.
+
+## Flow Diagram & Implementation Notes
+- Recommended flow for each source:
+  1. Source stream/file → staging (immutable raw) with `ingest_ts` and `batch_id`.
+  2. Raw normalization → enrichment (FX, KYC flags, geo) → dedup.
+  3. Load to canonical facts and dimensions (use upsert strategies for dimensions with SCD2/3 as needed).
+  4. Run reconciliation & data quality checks (Great Expectations or custom tests).
+  5. Publish datasets to analytics zone (curated), and register in data catalog.
+
+## Next Steps & Options
+- If you want the same expanded treatment for all other markdown files in `project_markdowns`, I can proceed in batches (e.g., 5 files per batch) and update the todo list accordingly. This iteration focused on the currently-open file. Please confirm if I should continue applying this level of detail to the remaining files.
+
+## Detailed ER Diagram
+
+# Detailed ER Diagram: Entities, Attributes, Relationships, Cardinalities
+
+This detailed ER diagram template expands the ASCII ER stub into full entity descriptions, attribute lists, primary/foreign key definitions, and explicit relationships with cardinalities for the project prefix `banking_transaction_processing_pipeline` (source file `banking-transaction-processing-pipeline.md`).
+
+The template covers a canonical canonical set of logical entities used across projects: Source/Stage/Raw, Dimension entities, Fact entities, Reference / Lookup tables, and Audit & Reconciliation tables.
+
+---
+
+**Entity: `banking_transaction_processing_pipeline_raw_records`**
+- Purpose: Immutable raw ingest payload store (one row per source record).
+- PK: `record_key`
+- Key attributes: `record_key (PK)`, `source_system`, `raw_payload` (JSON), `ingest_ts`, `ingest_batch_id`, `payload_hash`.
+
+**Entity: `banking_transaction_processing_pipeline_stg_<topic>`** (generic staging)
+- Purpose: Parsed staging of a raw record specific to a topic (e.g. transactions, events).
+- PK: `stg_id`
+- Key attributes: `stg_id (PK)`, `record_key (FK -> banking_transaction_processing_pipeline_raw_records.record_key)`, `parsed_fields...`, `ingest_ts`, `batch_id`, `load_status`.
+
+**Entity: `banking_transaction_processing_pipeline_dim_account`**
+- Purpose: Account dimension used by transaction facts.
+- PK: `account_id`
+- Attributes: `account_id (PK)`, `customer_id`, `account_type`, `currency_code`, `open_date`, `close_date`, `status`, `valid_from`, `valid_to`.
+
+**Entity: `banking_transaction_processing_pipeline_dim_customer`**
+- Purpose: Customer master attributes and identity.
+- PK: `customer_id`
+- Attributes: `customer_id (PK)`, `first_name`, `last_name`, `email_hash`, `birth_date`, `kyc_level`, `country`, `risk_score`, `valid_from`, `valid_to`.
+
+**Entity: `banking_transaction_processing_pipeline_dim_time`**
+- Purpose: Standard time dimension for reporting.
+- PK: `date_key`
+- Attributes: `date_key (PK)`, `date`, `year`, `quarter`, `month`, `day`, `weekday`, `is_business_day`.
+
+**Entity: `banking_transaction_processing_pipeline_dim_product`**
+- Purpose: Product/SKU master for retail-like facts.
+- PK: `product_id`
+- Attributes: `product_id (PK)`, `sku`, `name`, `category`, `brand`, `size`, `color`, `status`, `valid_from`, `valid_to`.
+
+**Entity: `banking_transaction_processing_pipeline_fact_transactions`**
+- Purpose: Canonical transaction-level fact (grain: one event/transaction).
+- PK: `transaction_id`
+- Attributes: `transaction_id (PK)`, `source_event_id`, `account_id (FK)`, `customer_id (FK)`, `product_id (FK)`, `amount`, `currency_code`, `amount_usd`, `txn_type`, `channel_code`, `merchant_id`, `status`, `posted_ts`, `processed_ts`, `ingest_batch_id`, `checksum`.
+
+---
+
+Relationships and cardinalities (explicit):
+- `banking_transaction_processing_pipeline_fact_transactions.account_id` (M:1) -> `banking_transaction_processing_pipeline_dim_account.account_id`
+  - Cardinality: Many transactions map to one account.
+- `banking_transaction_processing_pipeline_fact_transactions.customer_id` (M:1) -> `banking_transaction_processing_pipeline_dim_customer.customer_id`
+  - Many transactions per customer; some transactions inferred to customer through account linkage.
+- `banking_transaction_processing_pipeline_fact_transactions.product_id` (M:1) -> `banking_transaction_processing_pipeline_dim_product.product_id`
+  - Many fact rows reference a single product row.
+- `banking_transaction_processing_pipeline_fact_transactions.posted_ts` (M:1) -> `banking_transaction_processing_pipeline_dim_time.date_key` (via date_key derived from posted_ts)
+  - Many transactions map to one date in the time dimension.
+- `banking_transaction_processing_pipeline_stg_<topic>.record_key` (M:1) -> `banking_transaction_processing_pipeline_raw_records.record_key`
+  - One staging row per raw record, after parsing.
+
+Association tables / many-to-many patterns:
+- If customers belong to segments or tags, model as `banking_transaction_processing_pipeline_rel_customer_segment(customer_id FK, segment_id FK, assigned_ts)` with PK composite (`customer_id`, `segment_id`).
+
+Detailed ER rules & integrity constraints:
+- Use FK constraints where possible in the curated warehouse (e.g., `FOREIGN KEY (account_id) REFERENCES banking_transaction_processing_pipeline_dim_account(account_id)`).
+- Enforce uniqueness on natural keys (e.g., `transaction_id`, `account_id + source_event_id` as alternate key) and use checksums for content verification.
+- Implement SCD2 pattern for dimensions needing history using `valid_from` and `valid_to` and a surrogate `dim_pk`.
+
+Sample SQL DDL snippets (representative):
+
+CREATE TABLE banking_transaction_processing_pipeline_dim_customer (
+  customer_id STRING PRIMARY KEY,
+  first_name STRING,
+  last_name STRING,
+  email_hash STRING,
+  kyc_level STRING,
+  risk_score DOUBLE,
+  valid_from DATE,
+  valid_to DATE
+);
+
+CREATE TABLE banking_transaction_processing_pipeline_fact_transactions (
+  transaction_id STRING PRIMARY KEY,
+  source_event_id STRING,
+  account_id STRING,
+  customer_id STRING,
+  product_id STRING,
+  amount DECIMAL(18,2),
+  currency_code STRING,
+  posted_ts TIMESTAMP,
+  ingest_batch_id STRING,
+  checksum STRING,
+  FOREIGN KEY (account_id) REFERENCES banking_transaction_processing_pipeline_dim_account(account_id),
+  FOREIGN KEY (customer_id) REFERENCES banking_transaction_processing_pipeline_dim_customer(customer_id)
+);
+
+ER Diagram (visual guidance):
+- Center the `banking_transaction_processing_pipeline_fact_transactions` as the hub with outward links to `dim_account`, `dim_customer`, `dim_product`, and `dim_time`.
+- Secondary facts (e.g., `banking_transaction_processing_pipeline_fact_settlements`) link back to `fact_transactions` via `transaction_id` where the settlement is child of a transaction (1:M relationship).
+
+---
+
+Per-project extension guidance:
+- For banking projects, expand `dim_account` and `dim_customer` with regulatory attributes (aml_flags, kyc_date, tax_id_hash).
+- For retail projects, extend `dim_product` with merchandising attributes and `dim_store` to represent brick-and-mortar locations.
+- For IoT/telemetry projects, add time-series entity `banking_transaction_processing_pipeline_ts_measurements(device_id, measure_ts, metric, value)` with retention and rollup rules described.
+
+This template is intended to be expanded with project-specific entities. The automation script will replace `banking_transaction_processing_pipeline` and `banking-transaction-processing-pipeline.md` and append the section to each markdown file that does not already contain a `## Detailed ER Diagram` marker.
+

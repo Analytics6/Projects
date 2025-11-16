@@ -1,0 +1,265 @@
+# Retail Customer Reading Preference Data Pipeline
+
+Brief: Pipeline to capture and analyze customer reading preferences for personalized recommendations.
+
+- Objectives:
+  - Build preference signals for personalization and marketing.
+- Scope:
+  - Content interactions, ratings, dwell time, purchases.
+- Key Components:
+  - Event collectors, feature extraction, feature store.
+- Technologies:
+  - Stream processing, Databricks, feature store frameworks.
+- Deliverables:
+  - Preference features, sample recommender integration.
+
+## Expanded Source Schemas, ER Diagrams, Facts & Dimensions
+
+Five sources focused on content consumption, preferences, metadata, personalization experiments, and feedback, each with 20 tables, ER diagrams, facts/dimensions, reconciliation patterns, and a rights statement. Project prefix: `rcrp_`.
+
+### Source A: Content Interaction Events (rcrp_events)
+
+Tables (20):
+1. rcrp_stg_events
+2. rcrp_raw_events
+3. rcrp_dim_content
+4. rcrp_dim_user
+5. rcrp_dim_device
+6. rcrp_ref_event_types
+7. rcrp_fact_content_views
+8. rcrp_stage_sessionization
+9. rcrp_dim_time
+10. rcrp_dim_channel
+11. rcrp_audit_ingest
+12. rcrp_ref_sampling
+13. rcrp_stage_dedup
+14. rcrp_fact_engagement_scores
+15. rcrp_dim_region
+16. rcrp_ref_events_map
+17. rcrp_audit_recon
+18. rcrp_stage_enrich
+19. rcrp_ref_retention
+20. rcrp_dim_status
+
+ER Diagram (ASCII):
+
+rcrp_fact_content_views (view_id, content_id, user_id, device_id, view_ts)
+  |-- content_id --> rcrp_dim_content(content_id)
+  |-- user_id --> rcrp_dim_user(user_id)
+
+Rights Statement: I confirm these flow diagrams and schema designs are authored as original artifacts for personalization pipeline design and documentation.
+
+---
+
+### Source B: Content Catalog & Metadata (rcrp_catalog)
+
+Tables (20):
+1. rcrp_stg_catalog
+2. rcrp_raw_catalog
+3. rcrp_dim_content
+4. rcrp_dim_author
+5. rcrp_dim_category
+6. rcrp_ref_taxonomy
+7. rcrp_fact_content_attributes
+8. rcrp_stage_media
+9. rcrp_dim_format
+10. rcrp_dim_time
+11. rcrp_audit_catalog_ingest
+12. rcrp_ref_mappings
+13. rcrp_stage_sync
+14. rcrp_fact_catalog_changes
+15. rcrp_dim_status
+16. rcrp_ref_languages
+17. rcrp_audit_recon
+18. rcrp_stage_enrich
+19. rcrp_ref_classifiers
+20. rcrp_dim_owner
+
+---
+
+### Source C: Personalization Features (rcrp_features)
+
+Tables (20):
+1. rcrp_stg_features
+2. rcrp_raw_features
+3. rcrp_dim_feature
+4. rcrp_dim_model_version
+5. rcrp_dim_user
+6. rcrp_ref_feature_defs
+7. rcrp_fact_feature_snapshots
+8. rcrp_stage_feature_store
+9. rcrp_dim_time
+10. rcrp_dim_segment
+11. rcrp_audit_feature_runs
+12. rcrp_ref_labeling_rules
+13. rcrp_stage_labeling
+14. rcrp_fact_model_performance
+15. rcrp_dim_status
+16. rcrp_ref_access_controls
+17. rcrp_audit_recon
+18. rcrp_stage_exports
+19. rcrp_ref_formats
+20. rcrp_dim_owner
+
+---
+
+### Source D: Experiments & A/B Testing (rcrp_experiments)
+
+Tables (20):
+1. rcrp_stg_experiments
+2. rcrp_raw_experiments
+3. rcrp_dim_experiment
+4. rcrp_dim_variation
+5. rcrp_dim_audience
+6. rcrp_ref_metrics
+7. rcrp_fact_experiment_results
+8. rcrp_stage_assignments
+9. rcrp_dim_time
+10. rcrp_dim_region
+11. rcrp_audit_experiment_ingest
+12. rcrp_ref_winner_criteria
+13. rcrp_stage_segmentations
+14. rcrp_fact_lift_metrics
+15. rcrp_dim_team
+16. rcrp_ref_stat_tests
+17. rcrp_audit_repro
+18. rcrp_stage_cleaned
+19. rcrp_ref_sampling
+20. rcrp_dim_status
+
+---
+
+### Source E: Feedback & Ratings (rcrp_feedback)
+
+Tables (20):
+1. rcrp_stg_feedback
+2. rcrp_raw_feedback
+3. rcrp_dim_user
+4. rcrp_dim_content
+5. rcrp_dim_channel
+6. rcrp_ref_sentiment_codes
+7. rcrp_fact_feedback
+8. rcrp_stage_text_analysis
+9. rcrp_dim_time
+10. rcrp_dim_region
+11. rcrp_audit_feedback_ingest
+12. rcrp_ref_classifiers
+13. rcrp_stage_enrichments
+14. rcrp_fact_sentiment_scores
+15. rcrp_dim_category
+16. rcrp_ref_tags
+17. rcrp_audit_recon
+18. rcrp_stage_moderation
+19. rcrp_ref_languages
+20. rcrp_dim_status
+
+Implementation tips: derive preference features from dwell time, completion, ratings, and purchases; store features in a feature store for low-latency serving and batch training.
+
+## Detailed ER Diagram
+
+# Detailed ER Diagram: Entities, Attributes, Relationships, Cardinalities
+
+This detailed ER diagram template expands the ASCII ER stub into full entity descriptions, attribute lists, primary/foreign key definitions, and explicit relationships with cardinalities for the project prefix `retail_customer_reading_preference_data_pipeline` (source file `retail-customer-reading-preference-data-pipeline.md`).
+
+The template covers a canonical canonical set of logical entities used across projects: Source/Stage/Raw, Dimension entities, Fact entities, Reference / Lookup tables, and Audit & Reconciliation tables.
+
+---
+
+**Entity: `retail_customer_reading_preference_data_pipeline_raw_records`**
+- Purpose: Immutable raw ingest payload store (one row per source record).
+- PK: `record_key`
+- Key attributes: `record_key (PK)`, `source_system`, `raw_payload` (JSON), `ingest_ts`, `ingest_batch_id`, `payload_hash`.
+
+**Entity: `retail_customer_reading_preference_data_pipeline_stg_<topic>`** (generic staging)
+- Purpose: Parsed staging of a raw record specific to a topic (e.g. transactions, events).
+- PK: `stg_id`
+- Key attributes: `stg_id (PK)`, `record_key (FK -> retail_customer_reading_preference_data_pipeline_raw_records.record_key)`, `parsed_fields...`, `ingest_ts`, `batch_id`, `load_status`.
+
+**Entity: `retail_customer_reading_preference_data_pipeline_dim_account`**
+- Purpose: Account dimension used by transaction facts.
+- PK: `account_id`
+- Attributes: `account_id (PK)`, `customer_id`, `account_type`, `currency_code`, `open_date`, `close_date`, `status`, `valid_from`, `valid_to`.
+
+**Entity: `retail_customer_reading_preference_data_pipeline_dim_customer`**
+- Purpose: Customer master attributes and identity.
+- PK: `customer_id`
+- Attributes: `customer_id (PK)`, `first_name`, `last_name`, `email_hash`, `birth_date`, `kyc_level`, `country`, `risk_score`, `valid_from`, `valid_to`.
+
+**Entity: `retail_customer_reading_preference_data_pipeline_dim_time`**
+- Purpose: Standard time dimension for reporting.
+- PK: `date_key`
+- Attributes: `date_key (PK)`, `date`, `year`, `quarter`, `month`, `day`, `weekday`, `is_business_day`.
+
+**Entity: `retail_customer_reading_preference_data_pipeline_dim_product`**
+- Purpose: Product/SKU master for retail-like facts.
+- PK: `product_id`
+- Attributes: `product_id (PK)`, `sku`, `name`, `category`, `brand`, `size`, `color`, `status`, `valid_from`, `valid_to`.
+
+**Entity: `retail_customer_reading_preference_data_pipeline_fact_transactions`**
+- Purpose: Canonical transaction-level fact (grain: one event/transaction).
+- PK: `transaction_id`
+- Attributes: `transaction_id (PK)`, `source_event_id`, `account_id (FK)`, `customer_id (FK)`, `product_id (FK)`, `amount`, `currency_code`, `amount_usd`, `txn_type`, `channel_code`, `merchant_id`, `status`, `posted_ts`, `processed_ts`, `ingest_batch_id`, `checksum`.
+
+---
+
+Relationships and cardinalities (explicit):
+- `retail_customer_reading_preference_data_pipeline_fact_transactions.account_id` (M:1) -> `retail_customer_reading_preference_data_pipeline_dim_account.account_id`
+  - Cardinality: Many transactions map to one account.
+- `retail_customer_reading_preference_data_pipeline_fact_transactions.customer_id` (M:1) -> `retail_customer_reading_preference_data_pipeline_dim_customer.customer_id`
+  - Many transactions per customer; some transactions inferred to customer through account linkage.
+- `retail_customer_reading_preference_data_pipeline_fact_transactions.product_id` (M:1) -> `retail_customer_reading_preference_data_pipeline_dim_product.product_id`
+  - Many fact rows reference a single product row.
+- `retail_customer_reading_preference_data_pipeline_fact_transactions.posted_ts` (M:1) -> `retail_customer_reading_preference_data_pipeline_dim_time.date_key` (via date_key derived from posted_ts)
+  - Many transactions map to one date in the time dimension.
+- `retail_customer_reading_preference_data_pipeline_stg_<topic>.record_key` (M:1) -> `retail_customer_reading_preference_data_pipeline_raw_records.record_key`
+  - One staging row per raw record, after parsing.
+
+Association tables / many-to-many patterns:
+- If customers belong to segments or tags, model as `retail_customer_reading_preference_data_pipeline_rel_customer_segment(customer_id FK, segment_id FK, assigned_ts)` with PK composite (`customer_id`, `segment_id`).
+
+Detailed ER rules & integrity constraints:
+- Use FK constraints where possible in the curated warehouse (e.g., `FOREIGN KEY (account_id) REFERENCES retail_customer_reading_preference_data_pipeline_dim_account(account_id)`).
+- Enforce uniqueness on natural keys (e.g., `transaction_id`, `account_id + source_event_id` as alternate key) and use checksums for content verification.
+- Implement SCD2 pattern for dimensions needing history using `valid_from` and `valid_to` and a surrogate `dim_pk`.
+
+Sample SQL DDL snippets (representative):
+
+CREATE TABLE retail_customer_reading_preference_data_pipeline_dim_customer (
+  customer_id STRING PRIMARY KEY,
+  first_name STRING,
+  last_name STRING,
+  email_hash STRING,
+  kyc_level STRING,
+  risk_score DOUBLE,
+  valid_from DATE,
+  valid_to DATE
+);
+
+CREATE TABLE retail_customer_reading_preference_data_pipeline_fact_transactions (
+  transaction_id STRING PRIMARY KEY,
+  source_event_id STRING,
+  account_id STRING,
+  customer_id STRING,
+  product_id STRING,
+  amount DECIMAL(18,2),
+  currency_code STRING,
+  posted_ts TIMESTAMP,
+  ingest_batch_id STRING,
+  checksum STRING,
+  FOREIGN KEY (account_id) REFERENCES retail_customer_reading_preference_data_pipeline_dim_account(account_id),
+  FOREIGN KEY (customer_id) REFERENCES retail_customer_reading_preference_data_pipeline_dim_customer(customer_id)
+);
+
+ER Diagram (visual guidance):
+- Center the `retail_customer_reading_preference_data_pipeline_fact_transactions` as the hub with outward links to `dim_account`, `dim_customer`, `dim_product`, and `dim_time`.
+- Secondary facts (e.g., `retail_customer_reading_preference_data_pipeline_fact_settlements`) link back to `fact_transactions` via `transaction_id` where the settlement is child of a transaction (1:M relationship).
+
+---
+
+Per-project extension guidance:
+- For banking projects, expand `dim_account` and `dim_customer` with regulatory attributes (aml_flags, kyc_date, tax_id_hash).
+- For retail projects, extend `dim_product` with merchandising attributes and `dim_store` to represent brick-and-mortar locations.
+- For IoT/telemetry projects, add time-series entity `retail_customer_reading_preference_data_pipeline_ts_measurements(device_id, measure_ts, metric, value)` with retention and rollup rules described.
+
+This template is intended to be expanded with project-specific entities. The automation script will replace `retail_customer_reading_preference_data_pipeline` and `retail-customer-reading-preference-data-pipeline.md` and append the section to each markdown file that does not already contain a `## Detailed ER Diagram` marker.
+

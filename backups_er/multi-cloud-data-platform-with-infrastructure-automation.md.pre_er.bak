@@ -1,0 +1,191 @@
+# Multi-Cloud Data Platform with Infrastructure Automation
+
+Brief: Design and implement a data platform spanning multiple cloud providers with IaC.
+
+- Objectives:
+  - Provide portability and standardized automation across clouds.
+- Scope:
+  - Networking, security, data replication, CI/CD.
+- Key Components:
+  - Terraform modules, cross-cloud data replication, governance.
+- Technologies:
+  - Terraform, Kubernetes, cloud provider services.
+- Deliverables:
+  - IaC modules, deployment templates, runbooks.
+
+# Expanded Source Schemas, ER Diagrams, Facts & Dimensions
+
+This standardized expansion provides five logical sources for the project and a canonical set of artifacts to be appended to project markdown files when a detailed schema is required.
+
+NOTE: The artifacts below are design artifacts created for documentation and implementation planning. They are original work and may be used for internal design and implementation purposes.
+
+Project-specific prefix: `multi_cloud_data_platform_with_infrastructure_automation` (derived from filename: `multi-cloud-data-platform-with-infrastructure-automation.md`).
+
+---
+
+### Source A: Ingest & Landing (Source: `multi_cloud_data_platform_with_infrastructure_automation_ingest`)
+
+Tables (20):
+1. multi_cloud_data_platform_with_infrastructure_automation_stg_raw
+2. multi_cloud_data_platform_with_infrastructure_automation_raw_records
+3. multi_cloud_data_platform_with_infrastructure_automation_dim_source_system
+4. multi_cloud_data_platform_with_infrastructure_automation_dim_data_owner
+5. multi_cloud_data_platform_with_infrastructure_automation_dim_file_type
+6. multi_cloud_data_platform_with_infrastructure_automation_ref_file_schema
+7. multi_cloud_data_platform_with_infrastructure_automation_fact_raw_events
+8. multi_cloud_data_platform_with_infrastructure_automation_stage_enrichments
+9. multi_cloud_data_platform_with_infrastructure_automation_dim_geo
+10. multi_cloud_data_platform_with_infrastructure_automation_dim_business_unit
+11. multi_cloud_data_platform_with_infrastructure_automation_audit_ingest
+12. multi_cloud_data_platform_with_infrastructure_automation_dim_environment
+13. multi_cloud_data_platform_with_infrastructure_automation_ref_parsing_errors
+14. multi_cloud_data_platform_with_infrastructure_automation_stage_cdc
+15. multi_cloud_data_platform_with_infrastructure_automation_dim_schema_version
+16. multi_cloud_data_platform_with_infrastructure_automation_fact_event_counts
+17. multi_cloud_data_platform_with_infrastructure_automation_audit_transforms
+18. multi_cloud_data_platform_with_infrastructure_automation_stage_retries
+19. multi_cloud_data_platform_with_infrastructure_automation_ref_mappings
+20. multi_cloud_data_platform_with_infrastructure_automation_dim_status
+
+ER Diagram (ASCII):
+
+multi_cloud_data_platform_with_infrastructure_automation_fact_raw_events (event_id, source_system_id, record_key, payload_hash, event_ts)
+  |-- source_system_id --> multi_cloud_data_platform_with_infrastructure_automation_dim_source_system(source_system_id)
+  |-- record_key --> multi_cloud_data_platform_with_infrastructure_automation_raw_records(record_key)
+
+Description: Ingest staging (immutable) → raw normalization → enrichment → audit. `multi_cloud_data_platform_with_infrastructure_automation_fact_raw_events` is used for throughput and source health monitoring.
+
+---
+
+### Source B: Operational Logs & Metrics (Source: `multi_cloud_data_platform_with_infrastructure_automation_ops`)
+
+Tables (20):
+1. multi_cloud_data_platform_with_infrastructure_automation_stg_ops_logs
+2. multi_cloud_data_platform_with_infrastructure_automation_raw_ops
+3. multi_cloud_data_platform_with_infrastructure_automation_dim_service
+4. multi_cloud_data_platform_with_infrastructure_automation_dim_instance
+5. multi_cloud_data_platform_with_infrastructure_automation_dim_log_level
+6. multi_cloud_data_platform_with_infrastructure_automation_ref_error_codes
+7. multi_cloud_data_platform_with_infrastructure_automation_fact_logs
+8. multi_cloud_data_platform_with_infrastructure_automation_stage_alerts
+9. multi_cloud_data_platform_with_infrastructure_automation_dim_team
+10. multi_cloud_data_platform_with_infrastructure_automation_dim_region
+11. multi_cloud_data_platform_with_infrastructure_automation_audit_ops_ingest
+12. multi_cloud_data_platform_with_infrastructure_automation_ref_runbooks
+13. multi_cloud_data_platform_with_infrastructure_automation_stage_incidents
+14. multi_cloud_data_platform_with_infrastructure_automation_fact_incident_metrics
+15. multi_cloud_data_platform_with_infrastructure_automation_dim_priority
+16. multi_cloud_data_platform_with_infrastructure_automation_ref_maintenance_windows
+17. multi_cloud_data_platform_with_infrastructure_automation_audit_recon
+18. multi_cloud_data_platform_with_infrastructure_automation_stage_trimmed_logs
+19. multi_cloud_data_platform_with_infrastructure_automation_ref_retention_policy
+20. multi_cloud_data_platform_with_infrastructure_automation_dim_status
+
+ER Diagram (ASCII):
+
+multi_cloud_data_platform_with_infrastructure_automation_fact_logs (log_id, service_id, instance_id, log_level, message_ts)
+  |-- service_id --> multi_cloud_data_platform_with_infrastructure_automation_dim_service(service_id)
+  |-- instance_id --> multi_cloud_data_platform_with_infrastructure_automation_dim_instance(instance_id)
+
+---
+
+### Source C: Governance & Catalog (Source: `multi_cloud_data_platform_with_infrastructure_automation_gov`)
+
+Tables (20):
+1. multi_cloud_data_platform_with_infrastructure_automation_stg_catalog
+2. multi_cloud_data_platform_with_infrastructure_automation_raw_catalog
+3. multi_cloud_data_platform_with_infrastructure_automation_dim_dataset
+4. multi_cloud_data_platform_with_infrastructure_automation_dim_owner
+5. multi_cloud_data_platform_with_infrastructure_automation_dim_tag
+6. multi_cloud_data_platform_with_infrastructure_automation_ref_policies
+7. multi_cloud_data_platform_with_infrastructure_automation_fact_data_quality
+8. multi_cloud_data_platform_with_infrastructure_automation_stage_lineage
+9. multi_cloud_data_platform_with_infrastructure_automation_dim_classification
+10. multi_cloud_data_platform_with_infrastructure_automation_dim_sensitivity
+11. multi_cloud_data_platform_with_infrastructure_automation_audit_policies
+12. multi_cloud_data_platform_with_infrastructure_automation_ref_sla
+13. multi_cloud_data_platform_with_infrastructure_automation_stage_certifications
+14. multi_cloud_data_platform_with_infrastructure_automation_fact_issues
+15. multi_cloud_data_platform_with_infrastructure_automation_dim_remediation_team
+16. multi_cloud_data_platform_with_infrastructure_automation_ref_controls
+17. multi_cloud_data_platform_with_infrastructure_automation_audit_certification
+18. multi_cloud_data_platform_with_infrastructure_automation_stage_policy_changes
+19. multi_cloud_data_platform_with_infrastructure_automation_ref_standards
+20. multi_cloud_data_platform_with_infrastructure_automation_dim_status
+
+ER Diagram (ASCII):
+
+multi_cloud_data_platform_with_infrastructure_automation_fact_data_quality (dq_id, dataset_id, check_name, check_status, checked_ts)
+  |-- dataset_id --> multi_cloud_data_platform_with_infrastructure_automation_dim_dataset(dataset_id)
+
+---
+
+### Source D: Cost, Billing & Usage (Source: `multi_cloud_data_platform_with_infrastructure_automation_cost`)
+
+Tables (20):
+1. multi_cloud_data_platform_with_infrastructure_automation_stg_billing_records
+2. multi_cloud_data_platform_with_infrastructure_automation_raw_billing
+3. multi_cloud_data_platform_with_infrastructure_automation_dim_cost_center
+4. multi_cloud_data_platform_with_infrastructure_automation_dim_resource_type
+5. multi_cloud_data_platform_with_infrastructure_automation_dim_region
+6. multi_cloud_data_platform_with_infrastructure_automation_ref_price_catalog
+7. multi_cloud_data_platform_with_infrastructure_automation_fact_cost_usage
+8. multi_cloud_data_platform_with_infrastructure_automation_stage_allocations
+9. multi_cloud_data_platform_with_infrastructure_automation_dim_tagging
+10. multi_cloud_data_platform_with_infrastructure_automation_dim_currency
+11. multi_cloud_data_platform_with_infrastructure_automation_audit_billing_ingest
+12. multi_cloud_data_platform_with_infrastructure_automation_ref_discounts
+13. multi_cloud_data_platform_with_infrastructure_automation_stage_corrections
+14. multi_cloud_data_platform_with_infrastructure_automation_fact_monthly_costs
+15. multi_cloud_data_platform_with_infrastructure_automation_dim_billing_account
+16. multi_cloud_data_platform_with_infrastructure_automation_ref_chargeback_rules
+17. multi_cloud_data_platform_with_infrastructure_automation_audit_allocations
+18. multi_cloud_data_platform_with_infrastructure_automation_stage_forecasts
+19. multi_cloud_data_platform_with_infrastructure_automation_ref_rates
+20. multi_cloud_data_platform_with_infrastructure_automation_dim_status
+
+ER Diagram (ASCII):
+
+multi_cloud_data_platform_with_infrastructure_automation_fact_cost_usage (usage_id, resource_id, cost_amount, currency, start_ts, end_ts)
+  |-- resource_id --> multi_cloud_data_platform_with_infrastructure_automation_dim_resource_type(resource_id)
+  |-- cost_center_id --> multi_cloud_data_platform_with_infrastructure_automation_dim_cost_center(cost_center_id)
+
+---
+
+### Source E: Canonical Transactions / Facts (Source: `multi_cloud_data_platform_with_infrastructure_automation_txn`)
+
+Tables (20):
+1. multi_cloud_data_platform_with_infrastructure_automation_stg_transactions
+2. multi_cloud_data_platform_with_infrastructure_automation_raw_transactions
+3. multi_cloud_data_platform_with_infrastructure_automation_dim_account
+4. multi_cloud_data_platform_with_infrastructure_automation_dim_customer
+5. multi_cloud_data_platform_with_infrastructure_automation_dim_product
+6. multi_cloud_data_platform_with_infrastructure_automation_ref_exchange_rates
+7. multi_cloud_data_platform_with_infrastructure_automation_fact_transactions
+8. multi_cloud_data_platform_with_infrastructure_automation_stage_reconciliations
+9. multi_cloud_data_platform_with_infrastructure_automation_dim_channel
+10. multi_cloud_data_platform_with_infrastructure_automation_dim_merchant
+11. multi_cloud_data_platform_with_infrastructure_automation_audit_txn_ingest
+12. multi_cloud_data_platform_with_infrastructure_automation_ref_fee_schedule
+13. multi_cloud_data_platform_with_infrastructure_automation_stage_settlements
+14. multi_cloud_data_platform_with_infrastructure_automation_fact_settlements
+15. multi_cloud_data_platform_with_infrastructure_automation_dim_status
+16. multi_cloud_data_platform_with_infrastructure_automation_ref_limits
+17. multi_cloud_data_platform_with_infrastructure_automation_audit_recon
+18. multi_cloud_data_platform_with_infrastructure_automation_stage_adjustments
+19. multi_cloud_data_platform_with_infrastructure_automation_fact_balance_snapshots
+20. multi_cloud_data_platform_with_infrastructure_automation_dim_time
+
+ER Diagram (ASCII):
+
+multi_cloud_data_platform_with_infrastructure_automation_fact_transactions (transaction_id, account_id, amount, currency, txn_type, posted_ts)
+  |-- account_id --> multi_cloud_data_platform_with_infrastructure_automation_dim_account(account_id)
+  |-- customer_id --> multi_cloud_data_platform_with_infrastructure_automation_dim_customer(customer_id)
+  |-- product_id --> multi_cloud_data_platform_with_infrastructure_automation_dim_product(product_id)
+
+Common guidance:
+- Always keep an immutable staging/raw zone for auditable ingestion.
+- Use `audit_*` tables and checksums for reconciliation between source and target facts.
+- Implement SCD patterns for dimensions where history is required.
+- Register datasets in a data catalog and apply RBAC and PII protections as required.
+

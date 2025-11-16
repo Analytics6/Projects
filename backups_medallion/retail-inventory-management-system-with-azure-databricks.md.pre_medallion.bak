@@ -1,0 +1,263 @@
+# Retail Inventory Management System with Azure Databricks
+
+Brief: Implement inventory processing and analytics using Databricks.
+
+- Objectives:
+  - Improve inventory visibility and forecasting accuracy.
+- Scope:
+  - Stock levels, replenishment signals, supplier lead-times.
+- Key Components:
+  - Inventory ETL, forecasting notebooks, dashboards.
+- Technologies:
+  - Databricks, Delta Lake, Azure Data Factory.
+- Deliverables:
+  - Inventory datasets, forecasting model, runbooks.
+
+## Expanded Source Schemas, ER Diagrams, Facts & Dimensions
+
+Five inventory-focused sources (POS, Warehouse, Suppliers, Forecasting, Replenishment), each with 20 tables, ER diagrams, fact/dimension descriptions, reconciliation patterns, and a rights statement. Project prefix: `rim_`.
+
+### Source A: POS Sales Feed (rim_pos)
+
+Tables (20):
+1. rim_stg_pos
+2. rim_raw_pos
+3. rim_dim_terminal
+4. rim_dim_product
+5. rim_dim_store
+6. rim_ref_txn_types
+7. rim_fact_sales
+8. rim_stage_returns
+9. rim_dim_time
+10. rim_dim_channel
+11. rim_audit_pos_ingest
+12. rim_ref_pricing
+13. rim_stage_promotions
+14. rim_fact_basket
+15. rim_dim_cashier
+16. rim_ref_tax_codes
+17. rim_audit_recon
+18. rim_stage_settlements
+19. rim_ref_discounts
+20. rim_dim_status
+
+ER Diagram (ASCII):
+
+rim_fact_sales (sale_id, order_id, product_id, qty, net_amount, store_id)
+  |-- product_id --> rim_dim_product(product_id)
+  |-- store_id --> rim_dim_store(store_id)
+
+---
+
+### Source B: Warehouse & Stock (rim_warehouse)
+
+Tables (20):
+1. rim_stg_stock_movements
+2. rim_raw_warehouse
+3. rim_dim_sku
+4. rim_dim_warehouse
+5. rim_dim_location
+6. rim_ref_storage_types
+7. rim_fact_stock_levels
+8. rim_stage_replenishments
+9. rim_dim_time
+10. rim_dim_supplier
+11. rim_audit_inventory_ingest
+12. rim_ref_lead_times
+13. rim_stage_transfers
+14. rim_fact_turnover
+15. rim_dim_status
+16. rim_ref_units
+17. rim_audit_recon
+18. rim_stage_adjustments
+19. rim_ref_packaging
+20. rim_dim_owner
+
+---
+
+### Source C: Supplier & PO (rim_supplier)
+
+Tables (20):
+1. rim_stg_po
+2. rim_raw_supplier_feeds
+3. rim_dim_supplier
+4. rim_dim_product
+5. rim_dim_lead_time_bucket
+6. rim_ref_incoterms
+7. rim_fact_po_lines
+8. rim_stage_goods_receipt
+9. rim_dim_time
+10. rim_dim_currency
+11. rim_audit_supplier_ingest
+12. rim_ref_payment_terms
+13. rim_stage_invoices
+14. rim_fact_costs
+15. rim_dim_status
+16. rim_ref_uis
+17. rim_audit_recon
+18. rim_stage_returns
+19. rim_ref_quality_codes
+20. rim_dim_owner
+
+---
+
+### Source D: Forecasts & Demand Signals (rim_forecast)
+
+Tables (20):
+1. rim_stg_forecasts
+2. rim_raw_forecast_runs
+3. rim_dim_model_version
+4. rim_dim_sku
+5. rim_dim_store
+6. rim_ref_forecast_params
+7. rim_fact_forecasts
+8. rim_stage_inputs
+9. rim_dim_time
+10. rim_dim_segment
+11. rim_audit_forecast_runs
+12. rim_ref_feature_defs
+13. rim_stage_backtests
+14. rim_fact_forecast_accuracy
+15. rim_dim_status
+16. rim_ref_seasonality_profiles
+17. rim_audit_recon
+18. rim_stage_enrichments
+19. rim_ref_metrics
+20. rim_dim_owner
+
+---
+
+### Source E: Replenishment & Orders (rim_replenish)
+
+Tables (20):
+1. rim_stg_replenish_orders
+2. rim_raw_replenish
+3. rim_dim_supplier
+4. rim_dim_sku
+5. rim_dim_store
+6. rim_ref_reorder_rules
+7. rim_fact_replenishment_instructions
+8. rim_stage_allocations
+9. rim_dim_time
+10. rim_dim_priority
+11. rim_audit_replenish_ingest
+12. rim_ref_costs
+13. rim_stage_confirmations
+14. rim_fact_fill_rates
+15. rim_dim_status
+16. rim_ref_lead_times
+17. rim_audit_recon
+18. rim_stage_corrections
+19. rim_ref_units
+20. rim_dim_owner
+
+Implementation notes: use daily balance snapshots for inventory visibility, implement reconciliation between POS, warehouse, and replenishment facts, and expose forecasting outputs into the curated zone for downstream consumers.
+
+## Detailed ER Diagram
+
+# Detailed ER Diagram: Entities, Attributes, Relationships, Cardinalities
+
+This detailed ER diagram template expands the ASCII ER stub into full entity descriptions, attribute lists, primary/foreign key definitions, and explicit relationships with cardinalities for the project prefix `retail_inventory_management_system_with_azure_databricks` (source file `retail-inventory-management-system-with-azure-databricks.md`).
+
+The template covers a canonical canonical set of logical entities used across projects: Source/Stage/Raw, Dimension entities, Fact entities, Reference / Lookup tables, and Audit & Reconciliation tables.
+
+---
+
+**Entity: `retail_inventory_management_system_with_azure_databricks_raw_records`**
+- Purpose: Immutable raw ingest payload store (one row per source record).
+- PK: `record_key`
+- Key attributes: `record_key (PK)`, `source_system`, `raw_payload` (JSON), `ingest_ts`, `ingest_batch_id`, `payload_hash`.
+
+**Entity: `retail_inventory_management_system_with_azure_databricks_stg_<topic>`** (generic staging)
+- Purpose: Parsed staging of a raw record specific to a topic (e.g. transactions, events).
+- PK: `stg_id`
+- Key attributes: `stg_id (PK)`, `record_key (FK -> retail_inventory_management_system_with_azure_databricks_raw_records.record_key)`, `parsed_fields...`, `ingest_ts`, `batch_id`, `load_status`.
+
+**Entity: `retail_inventory_management_system_with_azure_databricks_dim_account`**
+- Purpose: Account dimension used by transaction facts.
+- PK: `account_id`
+- Attributes: `account_id (PK)`, `customer_id`, `account_type`, `currency_code`, `open_date`, `close_date`, `status`, `valid_from`, `valid_to`.
+
+**Entity: `retail_inventory_management_system_with_azure_databricks_dim_customer`**
+- Purpose: Customer master attributes and identity.
+- PK: `customer_id`
+- Attributes: `customer_id (PK)`, `first_name`, `last_name`, `email_hash`, `birth_date`, `kyc_level`, `country`, `risk_score`, `valid_from`, `valid_to`.
+
+**Entity: `retail_inventory_management_system_with_azure_databricks_dim_time`**
+- Purpose: Standard time dimension for reporting.
+- PK: `date_key`
+- Attributes: `date_key (PK)`, `date`, `year`, `quarter`, `month`, `day`, `weekday`, `is_business_day`.
+
+**Entity: `retail_inventory_management_system_with_azure_databricks_dim_product`**
+- Purpose: Product/SKU master for retail-like facts.
+- PK: `product_id`
+- Attributes: `product_id (PK)`, `sku`, `name`, `category`, `brand`, `size`, `color`, `status`, `valid_from`, `valid_to`.
+
+**Entity: `retail_inventory_management_system_with_azure_databricks_fact_transactions`**
+- Purpose: Canonical transaction-level fact (grain: one event/transaction).
+- PK: `transaction_id`
+- Attributes: `transaction_id (PK)`, `source_event_id`, `account_id (FK)`, `customer_id (FK)`, `product_id (FK)`, `amount`, `currency_code`, `amount_usd`, `txn_type`, `channel_code`, `merchant_id`, `status`, `posted_ts`, `processed_ts`, `ingest_batch_id`, `checksum`.
+
+---
+
+Relationships and cardinalities (explicit):
+- `retail_inventory_management_system_with_azure_databricks_fact_transactions.account_id` (M:1) -> `retail_inventory_management_system_with_azure_databricks_dim_account.account_id`
+  - Cardinality: Many transactions map to one account.
+- `retail_inventory_management_system_with_azure_databricks_fact_transactions.customer_id` (M:1) -> `retail_inventory_management_system_with_azure_databricks_dim_customer.customer_id`
+  - Many transactions per customer; some transactions inferred to customer through account linkage.
+- `retail_inventory_management_system_with_azure_databricks_fact_transactions.product_id` (M:1) -> `retail_inventory_management_system_with_azure_databricks_dim_product.product_id`
+  - Many fact rows reference a single product row.
+- `retail_inventory_management_system_with_azure_databricks_fact_transactions.posted_ts` (M:1) -> `retail_inventory_management_system_with_azure_databricks_dim_time.date_key` (via date_key derived from posted_ts)
+  - Many transactions map to one date in the time dimension.
+- `retail_inventory_management_system_with_azure_databricks_stg_<topic>.record_key` (M:1) -> `retail_inventory_management_system_with_azure_databricks_raw_records.record_key`
+  - One staging row per raw record, after parsing.
+
+Association tables / many-to-many patterns:
+- If customers belong to segments or tags, model as `retail_inventory_management_system_with_azure_databricks_rel_customer_segment(customer_id FK, segment_id FK, assigned_ts)` with PK composite (`customer_id`, `segment_id`).
+
+Detailed ER rules & integrity constraints:
+- Use FK constraints where possible in the curated warehouse (e.g., `FOREIGN KEY (account_id) REFERENCES retail_inventory_management_system_with_azure_databricks_dim_account(account_id)`).
+- Enforce uniqueness on natural keys (e.g., `transaction_id`, `account_id + source_event_id` as alternate key) and use checksums for content verification.
+- Implement SCD2 pattern for dimensions needing history using `valid_from` and `valid_to` and a surrogate `dim_pk`.
+
+Sample SQL DDL snippets (representative):
+
+CREATE TABLE retail_inventory_management_system_with_azure_databricks_dim_customer (
+  customer_id STRING PRIMARY KEY,
+  first_name STRING,
+  last_name STRING,
+  email_hash STRING,
+  kyc_level STRING,
+  risk_score DOUBLE,
+  valid_from DATE,
+  valid_to DATE
+);
+
+CREATE TABLE retail_inventory_management_system_with_azure_databricks_fact_transactions (
+  transaction_id STRING PRIMARY KEY,
+  source_event_id STRING,
+  account_id STRING,
+  customer_id STRING,
+  product_id STRING,
+  amount DECIMAL(18,2),
+  currency_code STRING,
+  posted_ts TIMESTAMP,
+  ingest_batch_id STRING,
+  checksum STRING,
+  FOREIGN KEY (account_id) REFERENCES retail_inventory_management_system_with_azure_databricks_dim_account(account_id),
+  FOREIGN KEY (customer_id) REFERENCES retail_inventory_management_system_with_azure_databricks_dim_customer(customer_id)
+);
+
+ER Diagram (visual guidance):
+- Center the `retail_inventory_management_system_with_azure_databricks_fact_transactions` as the hub with outward links to `dim_account`, `dim_customer`, `dim_product`, and `dim_time`.
+- Secondary facts (e.g., `retail_inventory_management_system_with_azure_databricks_fact_settlements`) link back to `fact_transactions` via `transaction_id` where the settlement is child of a transaction (1:M relationship).
+
+---
+
+Per-project extension guidance:
+- For banking projects, expand `dim_account` and `dim_customer` with regulatory attributes (aml_flags, kyc_date, tax_id_hash).
+- For retail projects, extend `dim_product` with merchandising attributes and `dim_store` to represent brick-and-mortar locations.
+- For IoT/telemetry projects, add time-series entity `retail_inventory_management_system_with_azure_databricks_ts_measurements(device_id, measure_ts, metric, value)` with retention and rollup rules described.
+
+This template is intended to be expanded with project-specific entities. The automation script will replace `retail_inventory_management_system_with_azure_databricks` and `retail-inventory-management-system-with-azure-databricks.md` and append the section to each markdown file that does not already contain a `## Detailed ER Diagram` marker.
+

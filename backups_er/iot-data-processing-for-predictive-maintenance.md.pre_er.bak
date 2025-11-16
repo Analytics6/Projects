@@ -1,0 +1,191 @@
+# IoT Data Processing for Predictive Maintenance
+
+Brief: Data processing pipelines for predictive maintenance solutions.
+
+- Objectives:
+  - Transform raw telemetry into features for ML models.
+- Scope:
+  - Streaming ingestion, feature extraction, labeling.
+- Key Components:
+  - Stream processors, feature pipelines, model inputs.
+- Technologies:
+  - Kafka, Spark/Structured Streaming, Databricks.
+- Deliverables:
+  - Feature datasets, model-ready artifacts, monitoring.
+
+# Expanded Source Schemas, ER Diagrams, Facts & Dimensions
+
+This standardized expansion provides five logical sources for the project and a canonical set of artifacts to be appended to project markdown files when a detailed schema is required.
+
+NOTE: The artifacts below are design artifacts created for documentation and implementation planning. They are original work and may be used for internal design and implementation purposes.
+
+Project-specific prefix: `iot_data_processing_for_predictive_maintenance` (derived from filename: `iot-data-processing-for-predictive-maintenance.md`).
+
+---
+
+### Source A: Ingest & Landing (Source: `iot_data_processing_for_predictive_maintenance_ingest`)
+
+Tables (20):
+1. iot_data_processing_for_predictive_maintenance_stg_raw
+2. iot_data_processing_for_predictive_maintenance_raw_records
+3. iot_data_processing_for_predictive_maintenance_dim_source_system
+4. iot_data_processing_for_predictive_maintenance_dim_data_owner
+5. iot_data_processing_for_predictive_maintenance_dim_file_type
+6. iot_data_processing_for_predictive_maintenance_ref_file_schema
+7. iot_data_processing_for_predictive_maintenance_fact_raw_events
+8. iot_data_processing_for_predictive_maintenance_stage_enrichments
+9. iot_data_processing_for_predictive_maintenance_dim_geo
+10. iot_data_processing_for_predictive_maintenance_dim_business_unit
+11. iot_data_processing_for_predictive_maintenance_audit_ingest
+12. iot_data_processing_for_predictive_maintenance_dim_environment
+13. iot_data_processing_for_predictive_maintenance_ref_parsing_errors
+14. iot_data_processing_for_predictive_maintenance_stage_cdc
+15. iot_data_processing_for_predictive_maintenance_dim_schema_version
+16. iot_data_processing_for_predictive_maintenance_fact_event_counts
+17. iot_data_processing_for_predictive_maintenance_audit_transforms
+18. iot_data_processing_for_predictive_maintenance_stage_retries
+19. iot_data_processing_for_predictive_maintenance_ref_mappings
+20. iot_data_processing_for_predictive_maintenance_dim_status
+
+ER Diagram (ASCII):
+
+iot_data_processing_for_predictive_maintenance_fact_raw_events (event_id, source_system_id, record_key, payload_hash, event_ts)
+  |-- source_system_id --> iot_data_processing_for_predictive_maintenance_dim_source_system(source_system_id)
+  |-- record_key --> iot_data_processing_for_predictive_maintenance_raw_records(record_key)
+
+Description: Ingest staging (immutable) → raw normalization → enrichment → audit. `iot_data_processing_for_predictive_maintenance_fact_raw_events` is used for throughput and source health monitoring.
+
+---
+
+### Source B: Operational Logs & Metrics (Source: `iot_data_processing_for_predictive_maintenance_ops`)
+
+Tables (20):
+1. iot_data_processing_for_predictive_maintenance_stg_ops_logs
+2. iot_data_processing_for_predictive_maintenance_raw_ops
+3. iot_data_processing_for_predictive_maintenance_dim_service
+4. iot_data_processing_for_predictive_maintenance_dim_instance
+5. iot_data_processing_for_predictive_maintenance_dim_log_level
+6. iot_data_processing_for_predictive_maintenance_ref_error_codes
+7. iot_data_processing_for_predictive_maintenance_fact_logs
+8. iot_data_processing_for_predictive_maintenance_stage_alerts
+9. iot_data_processing_for_predictive_maintenance_dim_team
+10. iot_data_processing_for_predictive_maintenance_dim_region
+11. iot_data_processing_for_predictive_maintenance_audit_ops_ingest
+12. iot_data_processing_for_predictive_maintenance_ref_runbooks
+13. iot_data_processing_for_predictive_maintenance_stage_incidents
+14. iot_data_processing_for_predictive_maintenance_fact_incident_metrics
+15. iot_data_processing_for_predictive_maintenance_dim_priority
+16. iot_data_processing_for_predictive_maintenance_ref_maintenance_windows
+17. iot_data_processing_for_predictive_maintenance_audit_recon
+18. iot_data_processing_for_predictive_maintenance_stage_trimmed_logs
+19. iot_data_processing_for_predictive_maintenance_ref_retention_policy
+20. iot_data_processing_for_predictive_maintenance_dim_status
+
+ER Diagram (ASCII):
+
+iot_data_processing_for_predictive_maintenance_fact_logs (log_id, service_id, instance_id, log_level, message_ts)
+  |-- service_id --> iot_data_processing_for_predictive_maintenance_dim_service(service_id)
+  |-- instance_id --> iot_data_processing_for_predictive_maintenance_dim_instance(instance_id)
+
+---
+
+### Source C: Governance & Catalog (Source: `iot_data_processing_for_predictive_maintenance_gov`)
+
+Tables (20):
+1. iot_data_processing_for_predictive_maintenance_stg_catalog
+2. iot_data_processing_for_predictive_maintenance_raw_catalog
+3. iot_data_processing_for_predictive_maintenance_dim_dataset
+4. iot_data_processing_for_predictive_maintenance_dim_owner
+5. iot_data_processing_for_predictive_maintenance_dim_tag
+6. iot_data_processing_for_predictive_maintenance_ref_policies
+7. iot_data_processing_for_predictive_maintenance_fact_data_quality
+8. iot_data_processing_for_predictive_maintenance_stage_lineage
+9. iot_data_processing_for_predictive_maintenance_dim_classification
+10. iot_data_processing_for_predictive_maintenance_dim_sensitivity
+11. iot_data_processing_for_predictive_maintenance_audit_policies
+12. iot_data_processing_for_predictive_maintenance_ref_sla
+13. iot_data_processing_for_predictive_maintenance_stage_certifications
+14. iot_data_processing_for_predictive_maintenance_fact_issues
+15. iot_data_processing_for_predictive_maintenance_dim_remediation_team
+16. iot_data_processing_for_predictive_maintenance_ref_controls
+17. iot_data_processing_for_predictive_maintenance_audit_certification
+18. iot_data_processing_for_predictive_maintenance_stage_policy_changes
+19. iot_data_processing_for_predictive_maintenance_ref_standards
+20. iot_data_processing_for_predictive_maintenance_dim_status
+
+ER Diagram (ASCII):
+
+iot_data_processing_for_predictive_maintenance_fact_data_quality (dq_id, dataset_id, check_name, check_status, checked_ts)
+  |-- dataset_id --> iot_data_processing_for_predictive_maintenance_dim_dataset(dataset_id)
+
+---
+
+### Source D: Cost, Billing & Usage (Source: `iot_data_processing_for_predictive_maintenance_cost`)
+
+Tables (20):
+1. iot_data_processing_for_predictive_maintenance_stg_billing_records
+2. iot_data_processing_for_predictive_maintenance_raw_billing
+3. iot_data_processing_for_predictive_maintenance_dim_cost_center
+4. iot_data_processing_for_predictive_maintenance_dim_resource_type
+5. iot_data_processing_for_predictive_maintenance_dim_region
+6. iot_data_processing_for_predictive_maintenance_ref_price_catalog
+7. iot_data_processing_for_predictive_maintenance_fact_cost_usage
+8. iot_data_processing_for_predictive_maintenance_stage_allocations
+9. iot_data_processing_for_predictive_maintenance_dim_tagging
+10. iot_data_processing_for_predictive_maintenance_dim_currency
+11. iot_data_processing_for_predictive_maintenance_audit_billing_ingest
+12. iot_data_processing_for_predictive_maintenance_ref_discounts
+13. iot_data_processing_for_predictive_maintenance_stage_corrections
+14. iot_data_processing_for_predictive_maintenance_fact_monthly_costs
+15. iot_data_processing_for_predictive_maintenance_dim_billing_account
+16. iot_data_processing_for_predictive_maintenance_ref_chargeback_rules
+17. iot_data_processing_for_predictive_maintenance_audit_allocations
+18. iot_data_processing_for_predictive_maintenance_stage_forecasts
+19. iot_data_processing_for_predictive_maintenance_ref_rates
+20. iot_data_processing_for_predictive_maintenance_dim_status
+
+ER Diagram (ASCII):
+
+iot_data_processing_for_predictive_maintenance_fact_cost_usage (usage_id, resource_id, cost_amount, currency, start_ts, end_ts)
+  |-- resource_id --> iot_data_processing_for_predictive_maintenance_dim_resource_type(resource_id)
+  |-- cost_center_id --> iot_data_processing_for_predictive_maintenance_dim_cost_center(cost_center_id)
+
+---
+
+### Source E: Canonical Transactions / Facts (Source: `iot_data_processing_for_predictive_maintenance_txn`)
+
+Tables (20):
+1. iot_data_processing_for_predictive_maintenance_stg_transactions
+2. iot_data_processing_for_predictive_maintenance_raw_transactions
+3. iot_data_processing_for_predictive_maintenance_dim_account
+4. iot_data_processing_for_predictive_maintenance_dim_customer
+5. iot_data_processing_for_predictive_maintenance_dim_product
+6. iot_data_processing_for_predictive_maintenance_ref_exchange_rates
+7. iot_data_processing_for_predictive_maintenance_fact_transactions
+8. iot_data_processing_for_predictive_maintenance_stage_reconciliations
+9. iot_data_processing_for_predictive_maintenance_dim_channel
+10. iot_data_processing_for_predictive_maintenance_dim_merchant
+11. iot_data_processing_for_predictive_maintenance_audit_txn_ingest
+12. iot_data_processing_for_predictive_maintenance_ref_fee_schedule
+13. iot_data_processing_for_predictive_maintenance_stage_settlements
+14. iot_data_processing_for_predictive_maintenance_fact_settlements
+15. iot_data_processing_for_predictive_maintenance_dim_status
+16. iot_data_processing_for_predictive_maintenance_ref_limits
+17. iot_data_processing_for_predictive_maintenance_audit_recon
+18. iot_data_processing_for_predictive_maintenance_stage_adjustments
+19. iot_data_processing_for_predictive_maintenance_fact_balance_snapshots
+20. iot_data_processing_for_predictive_maintenance_dim_time
+
+ER Diagram (ASCII):
+
+iot_data_processing_for_predictive_maintenance_fact_transactions (transaction_id, account_id, amount, currency, txn_type, posted_ts)
+  |-- account_id --> iot_data_processing_for_predictive_maintenance_dim_account(account_id)
+  |-- customer_id --> iot_data_processing_for_predictive_maintenance_dim_customer(customer_id)
+  |-- product_id --> iot_data_processing_for_predictive_maintenance_dim_product(product_id)
+
+Common guidance:
+- Always keep an immutable staging/raw zone for auditable ingestion.
+- Use `audit_*` tables and checksums for reconciliation between source and target facts.
+- Implement SCD patterns for dimensions where history is required.
+- Register datasets in a data catalog and apply RBAC and PII protections as required.
+
